@@ -45,7 +45,6 @@ function ManifestIterator(manifest, filter_array, test_types) {
     this.filter_tests = new Array();
     this.filter_cases();
 }
-
 var gsuite_name = null;
 var gspec_desc = null;
 var type_arr = new Array();
@@ -140,17 +139,28 @@ function VisualOutput(elem, runner) {
     this.runner = runner;
     this.results_table = null;
     this.section_wrapper = null;
-    this.results_table = this.elem.querySelector(".results > div > table");
+    this.results_table = this.elem.querySelector(".results > div > div > table");
     this.section = null;
     this.progress = this.elem.querySelector(".summary .progress");
     this.meter = this.progress.querySelector(".progress-bar");
+    this.detail_div = this.elem.querySelector(".detail_div");
+    this.show_details_button = this.elem.querySelector(".show_details");
     this.result_count = null;
-    this.json_re_area = this.elem.querySelector("textarea");
 
     this.elem.style.display = "none";
     this.runner.start_callbacks.push(this.on_start.bind(this));
     this.runner.result_callbacks.push(this.on_result.bind(this));
     this.runner.done_callbacks.push(this.on_done.bind(this));
+    
+    this.show_details_button.onclick = function(){
+        if(this.detail_div.style.display == "none"){
+            this.show_details_button.innerHTML = "Hide Details";
+            this.detail_div.style.display = "block";
+        }else{
+            this.show_details_button.innerHTML = "Show Details";
+            this.detail_div.style.display = "none";
+        }
+    }.bind(this);
 }
 
 VisualOutput.prototype = {
@@ -163,9 +173,6 @@ VisualOutput.prototype = {
                 this.elem.querySelector("td." + p).textContent = 0;
             }
         }
-        if (this.json_re_area) {
-            this.json_re_area.parentNode.removeChild(this.json_re_area);
-        }
         this.elem.querySelector(".jsonResults").style.display = "none";
         this.meter.style.width = '0px';
         this.meter.textContent = '0%';
@@ -176,6 +183,7 @@ VisualOutput.prototype = {
     on_start: function() {
         this.clear();
         this.elem.style.display = "block";
+        this.detail_div.style.display = "none";
         this.meter.classList.add("progress-striped", "active");
     },
 
@@ -284,7 +292,7 @@ VisualOutput.prototype = {
         //add the json serialization of the results
         var a = this.elem.querySelector(".jsonResults");
         var json = this.runner.results.to_json();
-
+        
         if (document.getElementById("dumpit").checked) {
             this.json_re_area = document.createElement("textarea");
             this.json_re_area.style.width = "100%";
@@ -295,7 +303,7 @@ VisualOutput.prototype = {
         var blob = new Blob([json], { type: "application/json" });
         a.href = window.URL.createObjectURL(blob);
         a.download = "runner-results.json";
-        a.textContent = "Download JSON results";
+        a.textContent = "Download JSON Results";
         if (!a.getAttribute("download")) a.textContent += " (right-click and save as to download)";
         a.style.display = "inline";
     },
@@ -417,12 +425,18 @@ ManualUI.prototype = {
     },
 
     on_test_start: function(test) {
+        document.getElementById("help").style.display = "none";
+        document.getElementById("test_select_div").style.display = "none";
+        document.getElementById("show_info").style.display = "none";
         if (test.type == "manual" || test.type == "reftest") {
+            document.getElementById("start_btn_div").classList.add("start_btn_div_manual");
             this.show();
         } else {
             this.hide();
         }
         if (test.type == "reftest") {
+            document.getElementById("start_btn_div").classList.remove("start_btn_div_manual");
+            document.getElementById("start_btn_div").classList.add("start_btn_div_reftest");
             this.show_ref();
             this.ref_type.textContent = test.ref_type === "==" ? "equal" : "unequal";
         } else {
@@ -454,25 +468,20 @@ function SuiteUI(elem, runner){
     this.elem = this.pelem.querySelector("div#selectpackages");
     this.runner = runner;
     this.select_all = this.elem.querySelector("input#selectall");
+    this.select_all_label = this.elem.querySelector("label#select_all_label");
+    this.select_all_span = this.elem.querySelector("span#select_all_span");
     this.ok_button = this.elem.querySelector("button.selcted-tests");
     this.packages_list = this.elem.querySelector("div.suitslist");
     this.filter_selected = this.pelem.querySelector("#select_tests");
     this.filter_input = this.pelem.querySelector("input#input_tests");
     this.render_suite_list(this.runner.select_json.data);
-    this.select_category = this.elem.querySelectorAll("h4>label>input");
+    this.select_category = this.elem.querySelectorAll(".accordion-heading>input");
     this.all_input_box = this.packages_list.querySelectorAll("input");
     this.spec_list = Array.prototype.slice.call(this.packages_list.querySelectorAll("li>label>input"));
-    this.category_list = Array.prototype.slice.call(this.packages_list.querySelectorAll("h4>label>input"));
-    this.head_list = Array.prototype.slice.call(this.packages_list.querySelectorAll("h4>div"));
-    this.set_lasted_blank();
-    this.elem.style.top = "20%";
-    this.hide();
-
-    this.ok_button.onclick = function(){
-        this.hide()
-        this.filter_selected.name = this.set_fiter_array()
-        this.set_status()
-    }.bind(this);
+    this.spec_list_li = Array.prototype.slice.call(this.packages_list.querySelectorAll("li.specname"));
+    this.category_list = Array.prototype.slice.call(this.packages_list.querySelectorAll(".accordion-heading>input"));
+    this.head_list = Array.prototype.slice.call(this.packages_list.querySelectorAll(".accordion-heading"));
+    this.categry_num = Array.prototype.slice.call(this.packages_list.querySelectorAll("label.categry_num"));
 
     this.select_all.onclick = function(){
         this.refresh_select_list_all()
@@ -483,7 +492,11 @@ function SuiteUI(elem, runner){
     }
 
     for(var i = 0,t = this.spec_list.length; i < t; i++){
-        this.spec_list[i].addEventListener('click', this.refresh_categry_input, false);
+        this.spec_list[i].addEventListener('click', this.refresh_categry_input_and_test_number, false);
+    }
+    
+    for(var i = 0,t = this.spec_list_li.length; i < t; i++){
+        this.spec_list_li[i].addEventListener('click', this.refresh_categry_input_and_test_number_by_li, false);
     }
 
     for(var i = 0,t = this.all_input_box.length; i < t; i++){
@@ -492,79 +505,93 @@ function SuiteUI(elem, runner){
         }.bind(this);
     }
     for(var i = 0,t = this.head_list.length; i < t; i++){
-        this.head_list[i].addEventListener('click', function(){
-            var node = this.parentNode.parentNode.childNodes[1];
-            var status = this.parentNode.parentNode.childNodes[1].style.display;
-            if(status == 'block'){
-                node.style.display = 'none';
-            }else{
-                node.style.display = 'block';
-            }
-        }, false);
+        this.head_list[i].addEventListener('click', this.show_hide_spec_list, false);
     }
 
+    for(var i = 0,t = this.categry_num.length; i < t; i++){
+        this.categry_num[i].addEventListener('click', this.refresh_categry_select, false);
+    }
 }
 SuiteUI.prototype ={
-    show: function() {
-        this.elem.style.display = "block";
-    },
-
-    hide: function(callback) {
-        this.elem.style.display = "none";
-    },
-    set_status: function(){
-        var status = 0;
-        Array.prototype.slice.call(this.all_input_box).forEach(function(dom){
-            if(dom.checked) status +=1
-        });
-        if (status>0){
-            this.filter_selected.classList.remove("btn-primary");
-            this.filter_selected.classList.add("btn-warning");
-            this.filter_input.value = '';
-        }else{
-            this.un_set_status();
-        }
-    },
-    un_set_status:function(){
-        this.filter_selected.classList.remove("btn-warning");
-        this.filter_selected.classList.add("btn-primary");
-        this.filter_selected.name = "";
-        this.set_all_unslected();
-    },
     render_suite_list: function(suite_data){
         var html = ''
+        var item = "first_categry";
+        var total_num = 0;
         for(var k in suite_data){
-            html +='<section style="border:none;"><h4 class="category" id="'+k+'">'
-            html +='<label><input type="checkbox" id="'+k+'"> '+k+'</label><div style="height:20px;"></div></h4>'
-            html +='<div style="display:block" id="'+k+'" >'
-            var data_item = suite_data[k]
-            for (var i in data_item){
-                html += '<li class="specname"><label class="spec_list" for="'+i+'"><input type="checkbox" id="'+i+'"> '+data_item[i].spec_desc+'</label><a href="'+data_item[i].spec_url+'"> [Spec]</a></li>'
+            if(item == "first_categry"){
+                var first_categry_num = 0;
+                var tab_html = '';
+                tab_html +='<div class="accordion-body collapse" style="display:none;"><div class="accordion-inner" id="'+k+'">';
+                var data_item = suite_data[k];                
+                for (var i in data_item){
+                    tab_html += '<li class="specname"><label class="spec_list spec_list_check" for="'+i+'"><input type="checkbox" id="'+i+'" checked> '+data_item[i].spec_desc+'</label><a href="'+data_item[i].spec_url+'"> <span class="glyphicon glyphicon-home"></span></a></li>'
+                    total_num++;
+                    first_categry_num++;
+                }
+                tab_html +='</div ></div ></div >';
+                tab_html = '<div class="accordion-group"><div class="accordion-heading"><input type="checkbox" id="'+k+'" checked><label class="category_label"> '+k+'</label><label class="categry_num">'+first_categry_num+' / '+first_categry_num+'</label></div>' + tab_html;
+                html += tab_html;
+                item = k;
+            }else{
+                var categry_num = 0;
+                var tab_html = '';
+                tab_html +='<div class="accordion-body collapse" style="display:none;"><div class="accordion-inner" id="'+k+'">';
+                var data_item = suite_data[k];                
+                for (var i in data_item){
+                    tab_html += '<li class="specname"><label class="spec_list" for="'+i+'"><input type="checkbox" id="'+i+'"> '+data_item[i].spec_desc+'</label><a href="'+data_item[i].spec_url+'"> <span class="glyphicon glyphicon-home"></span></a></li>'
+                    total_num++;
+                    categry_num++;
+                }
+                tab_html +='</div ></div ></div >';
+                tab_html = '<div class="accordion-group"><div class="accordion-heading"><input type="checkbox" id="'+k+'" checked><label class="category_label"> '+k+'</label><label class="categry_num">0 / '+categry_num+'</label></div>' + tab_html;
+                html += tab_html;
             }
-            html +='</div ></section>'
         }
-        this.packages_list.innerHTML = html
-    },
-    set_lasted_blank:function(){
-        Array.prototype.slice.call(this.packages_list.querySelectorAll("h4>label")).forEach(function(dom){
-            var leftWidth=dom.parentNode.offsetWidth-dom.offsetWidth;
-            dom.parentNode.querySelector('div').style.width = leftWidth;
-            dom.parentNode.querySelector('div').style.marginTop = '-21px';
-            dom.parentNode.querySelector('div').style.marginLeft = dom.offsetWidth+'px';
-        })
-    },
-    set_fiter_array:function(){
-        var id_array = new Array();
-        var node_list = new Array();
-        node_list = Array.prototype.slice.call(this.packages_list.querySelectorAll("li>label>input:checked"));
-        node_list.forEach(function (dom) {
-            id_array.push(dom.getAttribute('id'))
-        });
-        return id_array.join(',')
+        this.packages_list.innerHTML = html;
+        
+        var first_categry = this.pelem.querySelector("input#"+item); 
+        
+        first_categry.parentNode.parentNode.childNodes[1].style.display = "block";
+        
+        this.select_all_label.childNodes[2].data = " Select All ["+first_categry_num+"/"+total_num+"]";
+        
     },
 
     refresh_select_list_all: function(){
-        var status = this.select_all.checked
+        var status = this.select_all.checked;
+        var select_all_str = this.select_all_label.childNodes[2].data;
+        var arr1 = select_all_str.split("[");
+        var arr2 = arr1[1].split("/");
+        var arr3 = arr2[1].split("]");
+        if(status == true){
+            this.select_all_label.classList.remove("unselect_all_label");
+            this.select_all_label.classList.add("select_all_label");
+            this.select_all_span.classList.remove("glyphicon-remove");
+            this.select_all_span.classList.add("glyphicon-ok");
+            this.spec_list.forEach(function (dom) {
+                dom.parentNode.classList.add("spec_list_check");
+            });
+            this.select_all_label.childNodes[2].data = arr1[0] + "[" + arr3[0] + "/" + arr3[0] + "]";
+            this.category_list.forEach(function (dom) {
+                var category_str = dom.parentNode.childNodes[2].innerHTML;
+                var arr1 = category_str.split(" / ");
+                dom.parentNode.childNodes[2].innerHTML = arr1[1] + " / " + arr1[1];
+            });
+        }else{
+            this.select_all_label.classList.remove("select_all_label");
+            this.select_all_label.classList.add("unselect_all_label");
+            this.select_all_span.classList.remove("glyphicon-ok");
+            this.select_all_span.classList.add("glyphicon-remove");
+            this.spec_list.forEach(function (dom) {
+                dom.parentNode.classList.remove("spec_list_check");
+            });
+            this.select_all_label.childNodes[2].data = arr1[0] + "[0/" + arr3[0] + "]";
+            this.category_list.forEach(function (dom) {
+                var category_str = dom.parentNode.childNodes[2].innerHTML;
+                var arr1 = category_str.split(" / ");
+                dom.parentNode.childNodes[2].innerHTML = "0 / " + arr1[1];
+            });
+        }
         this.spec_list.forEach(function (dom) {
             dom.checked = status;
         });
@@ -575,12 +602,13 @@ SuiteUI.prototype ={
 
     refresh_spec_list: function(){
         var status = this.checked;
-        var input_parent_node = this.parentNode.parentNode.parentNode.querySelector("div#"+this.id);
+        var input_parent_node = this.parentNode.parentNode.querySelector("div#"+this.id);
         var input_list = Array.prototype.slice.call(input_parent_node.querySelectorAll("li>label>input"));
         input_list.forEach(function(dom){
             dom.checked = status;
         })
     },
+    
     refresh_selectall_input: function(){
         var status = true;
         Array.prototype.slice.call(this.all_input_box).forEach(function(dom){
@@ -588,47 +616,204 @@ SuiteUI.prototype ={
         })
         this.select_all.checked = status;
     },
-    refresh_categry_input: function(){
+    
+    refresh_categry_input_and_test_number: function(){
+        var this_status = this.checked;
+        var category_str = this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML;
+        var arr1 = category_str.split(" / ");
+        
+        var select_all_str = document.getElementById("select_all_label").childNodes[2].data;
+        var all_arr1 = select_all_str.split("[");
+        var all_arr2 = all_arr1[1].split("/");
+        var all_arr3 = all_arr2[1].split("]");
+        if(this_status == true){
+            this.parentNode.classList.add("spec_list_check");
+            var check_num = parseInt(arr1[0]) + 1;
+            this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + " / " + arr1[1];
+            var all_check_num = parseInt(all_arr2[0]) + 1;
+            document.getElementById("select_all_label").childNodes[2].data = all_arr1[0] + "[" + all_check_num + "/" + all_arr3[0] + "]";
+        }else{
+            var check_num = parseInt(arr1[0]) - 1;
+            this.parentNode.classList.remove("spec_list_check");
+            this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + " / " + arr1[1];
+            var all_check_num = parseInt(all_arr2[0]) - 1;
+            document.getElementById("select_all_label").childNodes[2].data = all_arr1[0] + "[" + all_check_num + "/" + all_arr3[0] + "]";
+        }
+        
         var status = true;
         var spec_parent_id = this.parentNode.parentNode.parentNode.id;
         Array.prototype.slice.call(this.parentNode.parentNode.parentNode.querySelectorAll("li>label>input")).forEach(function(dom){
             status = status && dom.checked;
         })
-        var spec_parent = this.parentNode.parentNode.parentNode.parentNode.querySelector("input#"+spec_parent_id)
+        var spec_parent = this.parentNode.parentNode.parentNode.parentNode.parentNode.querySelector("input#"+spec_parent_id)
         spec_parent.checked = status;
     },
-    set_all_unslected: function(){
-        Array.prototype.slice.call(this.all_input_box).forEach(function(dom){
-            dom.checked = false;
-        });
-        this.select_all.checked = false;
+    
+    refresh_categry_input_and_test_number_by_li: function(){
+        if(this.childNodes[0].childNodes[0].checked == true){
+            this.childNodes[0].childNodes[0].checked = false;
+        }else{
+            this.childNodes[0].childNodes[0].checked = true;
+        }
+        var this_status = this.childNodes[0].childNodes[0].checked;
+        var category_str = this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML;
+        var arr1 = category_str.split(" / ");
+        
+        var select_all_str = document.getElementById("select_all_label").childNodes[2].data;
+        var all_arr1 = select_all_str.split("[");
+        var all_arr2 = all_arr1[1].split("/");
+        var all_arr3 = all_arr2[1].split("]");
+        if(this_status == true){
+            this.childNodes[0].classList.add("spec_list_check");
+            var check_num = parseInt(arr1[0]) + 1;
+            this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + " / " + arr1[1];
+            var all_check_num = parseInt(all_arr2[0]) + 1;
+            document.getElementById("select_all_label").childNodes[2].data = all_arr1[0] + "[" + all_check_num + "/" + all_arr3[0] + "]";
+        }else{
+            var check_num = parseInt(arr1[0]) - 1;
+            this.childNodes[0].classList.remove("spec_list_check");
+            this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + " / " + arr1[1];
+            var all_check_num = parseInt(all_arr2[0]) - 1;
+            document.getElementById("select_all_label").childNodes[2].data = all_arr1[0] + "[" + all_check_num + "/" + all_arr3[0] + "]";
+        }
+        
+        var status = true;
+        var spec_parent_id = this.parentNode.id;
+        Array.prototype.slice.call(this.parentNode.querySelectorAll("li>label>input")).forEach(function(dom){
+            status = status && dom.checked;
+        })
+        var spec_parent = this.parentNode.parentNode.parentNode.querySelector("input#"+spec_parent_id)
+        spec_parent.checked = status;
+    },
+    
+    show_hide_spec_list: function(){
+        var node = this.parentNode.childNodes[1];
+        var status = this.parentNode.childNodes[1].style.display;
+        var category_group_list = Array.prototype.slice.call(this.parentNode.parentNode.childNodes);
+        for(var j = 0,k = category_group_list.length; j < k; j++){
+            category_group_list[j].childNodes[1].style.display = "none";
+        }
+        if(status == 'none'){
+            node.style.display = 'block';
+        }else{
+            node.style.display = 'none';
+        }
+    },
+    
+    refresh_categry_select: function(){
+        var category_str = this.innerHTML;
+        var arr1 = category_str.split(" / ");
+        var arr_li = Array.prototype.slice.call(this.parentNode.parentNode.querySelectorAll("li.specname"));
+        
+        var select_all_str = document.getElementById("select_all_label").childNodes[2].data;
+        var all_arr1 = select_all_str.split("[");
+        var all_arr2 = all_arr1[1].split("/");
+        var all_arr3 = all_arr2[1].split("]");
+        
+        if (arr1[0] != arr1[1]){
+            this.innerHTML = arr1[1] + " / " + arr1[1];
+            arr_li.forEach(function(dom){
+                dom.childNodes[0].childNodes[0].checked = true;
+                dom.childNodes[0].classList.add("spec_list_check");
+            });
+            var all_check_num = parseInt(all_arr2[0]) + parseInt(arr1[1]) - parseInt(arr1[0]);
+            document.getElementById("select_all_label").childNodes[2].data = all_arr1[0] + "[" + all_check_num + "/" + all_arr3[0] + "]";
+        }else{
+            this.innerHTML = "0 / " + arr1[1];
+            arr_li.forEach(function(dom){
+                dom.childNodes[0].childNodes[0].checked = false;
+                dom.childNodes[0].classList.remove("spec_list_check");
+            });
+            var all_check_num = parseInt(all_arr2[0]) - parseInt(arr1[1]);
+            document.getElementById("select_all_label").childNodes[2].data = all_arr1[0] + "[" + all_check_num + "/" + all_arr3[0] + "]";
+        }
+        if(this.parentNode.parentNode.childNodes[1].style.display == "block"){
+            this.parentNode.parentNode.childNodes[1].style.display = "none";
+        }
     },
 }
 function TestControl(elem, runner) {
     this.elem = elem;
     this.filter_selected = this.elem.querySelector("#select_tests");
     this.filter_input = this.elem.querySelector("#input_tests");
-    this.pause_button = this.elem.querySelector("button.togglePause");
-    this.start_button = this.elem.querySelector("button.toggleStart");
+    this.pause_button = this.elem.querySelector("#togglePause");
+    this.start_button = this.elem.querySelector("#toggleStart");
     this.type_checkboxes = Array.prototype.slice.call(
     this.elem.querySelectorAll("input[type=checkbox].test-type"));
     this.iframe_checkbox = this.elem.querySelector(".iframe");
     this.timeout_input = this.elem.querySelector(".timeout_multiplier");
-    this.render_checkbox = this.elem.querySelector(".render");
     this.runner = runner;
     this.runner.done_callbacks.push(this.on_done.bind(this));
+    this.select_tab = this.elem.querySelector("#li_select_test_specs");
+    this.input_tab = this.elem.querySelector("#li_input_test_specs");
+    this.select_div = this.elem.querySelector("#select_test_specs");
+    this.input_div = this.elem.querySelector("#input_test_specs");
+    this.test_type_li_list = Array.prototype.slice.call(this.elem.querySelectorAll("li.test_type_li"));
+    this.input_test_pp = this.elem.querySelector("div.input_test_pp");
+    this.input_test_result = this.elem.querySelector("div.input_test_result");
+    this.input_result_remove = '';
+    this.add_li = this.elem.querySelector("li.add_li");
+    this.iframe_li = this.elem.querySelector("#iframe_ckb");
+    this.dumpit_li = this.elem.querySelector("#dumpit_ckb");
+    this.advanced_link = this.elem.querySelector(".advanced_link");
+    this.advanced_div = this.elem.querySelector(".advanced_div");
+    this.start_error = this.elem.querySelector(".start_error");
     this.set_start();
+
+    this.select_tab.onclick = function(){
+        this.select_select_tab();
+    }.bind(this);
+
+    this.input_tab.onclick = function(){
+        this.select_input_tab();
+    }.bind(this);
+    
+    this.dumpit_li.onclick = function(){
+        this.change_dumpit_li(this.dumpit_li);
+    }.bind(this);
+
+    this.iframe_li.onclick = function(){
+        this.change_iframe_li(this.iframe_li);
+    }.bind(this);
+
+    this.add_li.onclick = function(){
+        this.add_input_result(this.runner.select_json.data);
+    }.bind(this);
+    
+    this.advanced_link.onclick = function(){
+        if(this.advanced_div.style.display == "block"){
+            this.advanced_div.style.display = "none";
+            this.advanced_link.querySelector("span").classList.remove("glyphicon-chevron-down");
+            this.advanced_link.querySelector("span").classList.add("glyphicon-chevron-up");
+        }else{
+            this.advanced_div.style.display = "block";
+            this.advanced_link.querySelector("span").classList.remove("glyphicon-chevron-up");
+            this.advanced_link.querySelector("span").classList.add("glyphicon-chevron-down");
+        }
+    }.bind(this);
+
+    for (var i = 0, t = this.test_type_li_list.length; i < t; i++) {
+        if(i == 0){
+            this.test_type_li_list[i].querySelector("input").checked = true;
+        }else{
+            this.test_type_li_list[i].querySelector("input").checked = false;
+        }
+        this.test_type_li_list[i].addEventListener('click', this.change_ckb_by_li, false);
+    }
+
     if(document.all){
         this.filter_input.onpropertychange = function(){
             if(this.filter_input.value.length>0){
-               this.set_selection_status();
+               this.set_selection_status(this.runner.select_json.data);
            }
         }.bind(this);
     }else{
         this.filter_input.onkeyup = function(){
-            this.set_selection_status();
+            this.set_selection_status(this.runner.select_json.data);
         }.bind(this);
     }
+
+
 }
 
 TestControl.prototype = {
@@ -640,6 +825,9 @@ TestControl.prototype = {
         this.timeout_input.disabled = false;
         this.filter_selected.disabled = false;
         this.filter_input.disabled = false;
+        this.input_test_pp.style.display = "none";
+        this.input_test_result.style.display = "none";
+        this.start_error.style.display = "none";
         this.type_checkboxes.forEach(function(elem) {
             elem.disabled = false;
         });
@@ -647,6 +835,7 @@ TestControl.prototype = {
             var filter_array = this.get_filter();
             var test_types = this.get_test_types();
             var settings = this.get_testharness_settings();
+            this.pause_button.classList.remove("button_hidden");
             var run_mode = "window";
             if (this.iframe_checkbox.checked) {
                 run_mode = "iframe";
@@ -660,7 +849,6 @@ TestControl.prototype = {
                 this.set_stop();
                 this.set_pause();
             }
-
         }.bind(this);
         this.filter_selected.onclick = function(){
             this.runner.suiteui.show();
@@ -680,6 +868,17 @@ TestControl.prototype = {
             this.timeout_input.disabled = false;
             this.filter_selected.disabled = false;
             this.filter_input.disabled = false;
+            this.pause_button.classList.add("button_hidden");
+            document.getElementById("help").style.display = "none";
+            document.getElementById("test_select_div").style.display = "block";
+            document.getElementById("show_info").style.display = "block";
+            document.getElementById("start_btn_div").classList.remove("start_btn_div_manual");
+            document.getElementById("start_btn_div").classList.remove("start_btn_div_reftest");
+            if(this.input_test_result.querySelector("ul").childNodes.length > 0){
+                this.input_test_result.style.display = "block";
+            }else{
+                this.input_test_result.style.display = "none";
+            }
             this.runner.done();
         }.bind(this);
     },
@@ -706,16 +905,34 @@ TestControl.prototype = {
     },
 
     get_filter: function(data) {
-        var input_filter  = new Array();
-        input_filter = this.filter_input.value.split(',');
-        if (this.filter_input.value.length>0){
-            return this.change_input_to_spec(input_filter)
+        if (this.input_tab.classList.length>1){
+            if (this.input_test_result.querySelector("ul").childNodes.length>0){
+                var input_filter  = new Array();
+                var li_list = Array.prototype.slice.call(this.input_test_result.querySelectorAll("li"));
+                li_list.forEach(function (dom) {
+                    input_filter.push(dom.childNodes[0].data);
+                });
+                return this.change_input_to_spec(input_filter)
+            }else{
+                return new Array();
+            }
         }else{
             var selected_filter  = new Array();
-            selected_filter = this.filter_selected.name.split(',');
+            selected_filter = this.set_fiter_array();
             return selected_filter;
         }
     },
+    
+    set_fiter_array:function(){
+        var id_array = new Array();
+        var node_list = new Array();
+        node_list = Array.prototype.slice.call(this.select_div.querySelectorAll("li>label>input:checked"));
+        node_list.forEach(function (dom) {
+            id_array.push(dom.getAttribute('id'))
+        });
+        return id_array
+    },
+
     change_input_to_spec: function(input){
         var input_spec = new Array();
         for (var caty in this.runner.select_json.data){
@@ -733,25 +950,199 @@ TestControl.prototype = {
         }
         return input_spec
     },
-    set_selection_status: function(){
-        this.runner.suiteui.un_set_status();
+    set_selection_status: function(suite_data){
+        //this.runner.suiteui.un_set_status();
+        var input_value = this.filter_input.value.toLocaleLowerCase();
+        if(this.filter_input.value.length>2){
+            this.input_test_pp.style.display = "block";
+            var arr_html = new Array();
+            for(var k in suite_data){
+                if(k.toLocaleLowerCase().indexOf(input_value) == 0){
+                    arr_html.push('<span class="input_value_span">'+k+'*</span>');
+                }
+                var data_item = suite_data[k];
+                for (var i in data_item){
+                    if(i.toLocaleLowerCase().indexOf(input_value) == 0){
+                        arr_html.push('<span class="input_value_span">'+data_item[i].spec_desc+'</span>');
+                        continue;
+                    }
+                    if(data_item[i].spec_desc.toLocaleLowerCase().indexOf(input_value) == 0){
+                        arr_html.push('<span class="input_value_span">'+data_item[i].spec_desc+'</span>');
+                    }
+                }
+            }
+            this.input_test_pp.innerHTML = arr_html.join("<br>");
+            var input_span = Array.prototype.slice.call(this.elem.querySelectorAll("span.input_value_span"));
+            for (var i = 0, t = input_span.length; i < t; i++) {
+                input_span[i].addEventListener('click', function(){
+                    document.getElementById("input_tests").value = this.innerHTML;
+                }, false);
+            }
+        }else{
+            this.input_test_pp.style.display = "none";
+            this.input_test_pp.innerHTML = "";
+        }
     },
+
     get_test_types: function() {
-        return this.type_checkboxes.filter(function(elem) {
-            return elem.checked;
-        }).map(function(elem) {
-            return elem.value;
-        });
+        var test_type = new Array();
+        for (var i = 0, t = this.test_type_li_list.length; i < t; i++) {
+            if(this.test_type_li_list[i].querySelector("input").checked == true){
+                test_type.push(this.test_type_li_list[i].querySelector("input").value);
+            }
+        }
+        return test_type;
     },
 
     get_testharness_settings: function() {
         return {timeout_multiplier: parseFloat(this.timeout_input.value),
-                output: this.render_checkbox.checked};
+                output: false};
     },
 
     on_done: function() {
         this.set_pause();
         this.set_start();
+        this.pause_button.classList.add("button_hidden");
+        document.getElementById("help").style.display = "none";
+        document.getElementById("test_select_div").style.display = "block";
+        document.getElementById("show_info").style.display = "block";
+        document.getElementById("start_btn_div").classList.remove("start_btn_div_manual");
+        document.getElementById("start_btn_div").classList.remove("start_btn_div_reftest");
+        if(this.input_test_result.querySelector("ul").childNodes.length > 0){
+            this.input_test_result.style.display = "block";
+        }else{
+            this.input_test_result.style.display = "none";
+        }
+    },
+    
+    select_select_tab: function(){
+        this.select_tab.classList.remove("my_active");
+        this.select_tab.classList.add("my_active");
+        this.select_div.classList.remove("my_active");
+        this.select_div.classList.add("my_active");
+        this.input_tab.classList.remove("my_active");
+        this.input_div.classList.remove("my_active");
+    },
+    
+    select_input_tab: function(){
+        this.select_tab.classList.remove("my_active");
+        this.select_div.classList.remove("my_active");
+        this.input_tab.classList.remove("my_active");
+        this.input_tab.classList.add("my_active");
+        this.input_div.classList.remove("my_active");
+        this.input_div.classList.add("my_active");
+    },
+    
+    change_ckb_by_li: function(){
+        if(this.querySelector("input").checked == true){
+            this.querySelector("input").checked = false;
+            this.querySelector("span").classList.remove("glyphicon-ok");
+            this.querySelector("span").classList.add("glyphicon-remove");
+            this.classList.remove("test_type_check");
+            this.classList.add("test_type_uncheck");
+        }else{
+            this.querySelector("input").checked = true;
+            this.querySelector("span").classList.remove("glyphicon-remove");
+            this.querySelector("span").classList.add("glyphicon-ok");
+            this.classList.remove("test_type_uncheck");
+            this.classList.add("test_type_check");
+        }
+    },
+    
+    change_dumpit_li: function(dom){
+        if(dom.querySelector("input").checked == true){
+            dom.querySelector("input").checked = false;
+            dom.querySelector("span").classList.add("glyphicon-remove");
+            dom.querySelector("span").classList.remove("glyphicon-ok");
+            dom.classList.remove("advanced_ckb_checked");
+            dom.classList.add("advanced_ckb_unchecked");
+        }else{
+            dom.querySelector("input").checked = true;
+            dom.querySelector("span").classList.add("glyphicon-ok");
+            dom.querySelector("span").classList.remove("glyphicon-remove");
+            dom.classList.remove("advanced_ckb_unchecked");
+            dom.classList.add("advanced_ckb_checked");
+        }
+    },
+    
+    change_iframe_li: function(dom){
+        if(dom.querySelector("input").checked == true){
+            dom.querySelector("input").checked = false;
+            dom.querySelector("span").classList.add("glyphicon-remove");
+            dom.querySelector("span").classList.remove("glyphicon-ok");
+            dom.classList.remove("advanced_ckb_checked");
+            dom.classList.add("advanced_ckb_unchecked");
+        }else{
+            dom.querySelector("input").checked = true;
+            dom.querySelector("span").classList.add("glyphicon-ok");
+            dom.querySelector("span").classList.remove("glyphicon-remove");
+            dom.classList.remove("advanced_ckb_unchecked");
+            dom.classList.add("advanced_ckb_checked");
+        }
+    },
+    
+    add_input_result: function(suite_data){
+        var input_value = this.filter_input.value.toLocaleLowerCase();
+        var item = input_value.split('*');
+        input_value = item[0];
+        var list_arr = new Array();
+        var li_list = Array.prototype.slice.call(this.input_test_result.querySelectorAll("li"));
+        li_list.forEach(function (dom) {
+            list_arr.push(dom.childNodes[0].data);
+        });
+        var tmp = 1;
+        for(var k in suite_data){
+            if(k.toLocaleLowerCase() == input_value){
+                var data_item = suite_data[k];
+                for (var i in data_item){
+                    if(list_arr.indexOf(data_item[i].spec_desc) == -1){
+                        list_arr.push(data_item[i].spec_desc);
+                        tmp = 2;
+                    }                        
+                }
+            }else{
+                var data_item = suite_data[k];
+                for (var i in data_item){
+                    if(i.toLocaleLowerCase() == input_value){
+                        if(list_arr.indexOf(data_item[i].spec_desc) == -1){
+                            list_arr.push(data_item[i].spec_desc);
+                            tmp = 2;
+                        }
+                    }else if(data_item[i].spec_desc.toLocaleLowerCase() == input_value){
+                        if(list_arr.indexOf(data_item[i].spec_desc) == -1){
+                            list_arr.push(data_item[i].spec_desc);
+                            tmp = 2;
+                        }
+                    }
+                }
+            }
+        }
+        if(tmp == 2){
+            var ul_html = ''; 
+            list_arr.forEach(function (dom) {
+                ul_html += '<li>'+dom+'<span class="glyphicon glyphicon-remove"></span></li>';
+            });
+            this.input_test_result.querySelector("ul").innerHTML = ul_html;
+            
+            this.input_result_remove = Array.prototype.slice.call(this.input_test_result.querySelectorAll("li>span"));
+            for (var i = 0, t = this.input_result_remove.length; i < t; i++) {
+                this.input_result_remove[i].addEventListener('click', this.remove_input_result, false);
+            }
+        }
+        if(this.input_test_result.querySelector("ul").childNodes.length > 0){
+            this.input_test_result.style.display = "block";
+        }else{
+            this.input_test_result.style.display = "none";
+        }
+    },
+    
+    remove_input_result: function(){
+        if(this.parentNode.parentNode.childNodes.length > 1){
+            this.parentNode.parentNode.parentNode.style.display = "block";
+        }else{
+            this.parentNode.parentNode.parentNode.style.display = "none";
+        }
+        this.parentNode.parentNode.removeChild(this.parentNode);
     }
 };
 
@@ -881,6 +1272,7 @@ Runner.prototype = {
 
     do_start: function() {
         if(this.manifest_iterator.count()>0){
+            document.getElementById('start_error').style.display = "none";
             if (this.run_mode ==="window") {
                 this.open_test_window();
             }else if (this.run_mode === "iframe") {
@@ -891,7 +1283,8 @@ Runner.prototype = {
             });
             this.run_next_test();
         }else{
-            alert('No test spec found to run ...');
+            document.getElementById('togglePause').classList.add("button_hidden");
+            document.getElementById('start_error').style.display = "block";
         }
     },
 
@@ -991,7 +1384,6 @@ Runner.prototype = {
 
 };
 
-
 function parseOptions() {
     var options = {
         test_types: ["testharness", "reftest", "manual"]
@@ -1029,6 +1421,7 @@ function setup() {
     if (options.path) {
         document.getElementById('input_tests').value = options.path;
     }
+
     var help_btn = document.getElementById("show_info");
     var run_info = document.getElementById("help");
     var version_dom = document.getElementById('version');
@@ -1040,6 +1433,7 @@ function setup() {
             run_info.style.display = "none";
         }
     } , false);
+
     loadconfig("/tests/version.json",version_dom);
     runner = new Runner("/tests/MANIFEST.json", options);
     var test_control = new TestControl(document.getElementById("testControl"), runner);
