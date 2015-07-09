@@ -294,6 +294,10 @@ VisualOutput.prototype = {
         var json = this.runner.results.to_json();
         
         if (document.getElementById("dumpit").checked) {
+            var textarea_dlt = Array.prototype.slice.call(this.elem.querySelectorAll("textarea"));
+            for(var i = 0,t = textarea_dlt.length; i < t; i++){
+                this.elem.removeChild(textarea_dlt[i]);
+            }
             this.json_re_area = document.createElement("textarea");
             this.json_re_area.style.width = "100%";
             this.json_re_area.setAttribute("rows", "50");
