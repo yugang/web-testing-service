@@ -106,10 +106,6 @@ html.done section + section {
     color: #fff;
 }
 
-.panel-footer{
-    border-top: 0px;
-}
-
 .refType{
     color: #1ebcba;
 }
@@ -142,8 +138,9 @@ html.done section + section {
     border-radius:0px;
 }
 
-#manualUI .panel-footer {
+#manualUI .result_button {
     border-radius:0px;
+    float: right;
 }
 
 .pass,.block,.fail,.prev,.fwd{
@@ -165,10 +162,6 @@ html.done section + section {
 
 .man-tab{
     display: inline-block;
-}
-
-.panel-footer{
-    text-align:right;
 }
 
 .selectpackages .panel{
@@ -215,14 +208,6 @@ h4.category{
     background-color: #ccc;
 }
 
-.container_help{
-    margin-left: -8px; margin-right: -8px;
-    display: block;
-    padding: 0px 40px 0px 40px;
-    color: #fff;
-    background: #444;
-}
-
 .help-in{
     position: relative;
     z-index: 1050;
@@ -238,7 +223,6 @@ h4.category{
     max-width: 750px;
     margin-right: auto;
     margin-left: auto;
-    margin-top: -40px;
     padding: 20px 0px 20px 0px;
 }
 
@@ -357,7 +341,7 @@ input#input_tests{
 }
 
 .spec_list_check{
-    color: #1ebcba;
+    color: #c7254e;
 }
 
 #test_url{
@@ -397,10 +381,6 @@ input#input_tests{
         padding: 0px;
     }
     
-    .container_help{
-        padding:0px 10px 0px 10px;
-    }
-    
     .my_tab-content>.my_tab-pane{
         display:none;
         margin:0px 3px 20px 3px;
@@ -413,7 +393,7 @@ input#input_tests{
         padding-left: 0px;
         padding-right: 0px;
     }
-    .panel-footer{
+    .result_button{
         padding-left: 0px;
         padding-right: 0px;
     }
@@ -794,27 +774,25 @@ input#input_tests{
     color:red;
 }
 
-@media (max-width: 342px) {
-    .start_btn_div_manual{
-        margin-top: 78px;
-    }
+.start_btn_div_manual{
+    margin-top: 58px;
 }
 
-@media (min-width: 342px) {
-    .start_btn_div_manual{
-        margin-top: 58px;
-    }
-}
-
-@media (max-width: 640px) {
+@media (max-width: 454px) {
     .start_btn_div_reftest{
         margin-top: 128px;
     }
 }
 
-@media (min-width: 640px) {
+@media (min-width: 454px) {
     .start_btn_div_reftest{
-        margin-top: 108px;
+        margin-top: 88px;
+    }
+}
+
+@media (min-width: 559px) {
+    .start_btn_div_reftest{
+        margin-top: 68px;
     }
 }
 
@@ -828,7 +806,7 @@ input#input_tests{
 
 .select_all_div .select_all_label{
     background-color:#1ebcba;
-    padding:7px 15px 7px 10px;
+    padding:7px 12px 7px 10px;
     text-align:center;
     color:#fff;
     border-radius: 0px;
@@ -837,11 +815,35 @@ input#input_tests{
 
 .select_all_div .unselect_all_label{
     background-color:#aaa;
-    padding:7px 15px 7px 10px;
+    padding:7px 12px 7px 10px;
     text-align:center;
     color:#fff;
     border-radius: 0px;
     cursor: pointer;
+}
+
+.select_all_label .all_num{
+    cursor: pointer;
+    background-color:#fff;
+    -webkit-border-radius:15px;
+    -moz-border-radius:15px;
+    border-radius:15px;
+    color:#1ebcba;
+    padding:3px 5px 3px 5px;
+    margin-top: 4px;
+    text-align: center;
+}
+
+.unselect_all_label .all_num{
+    cursor: pointer;
+    background-color:#fff;
+    -webkit-border-radius:15px;
+    -moz-border-radius:15px;
+    border-radius:15px;
+    color:#aaa;
+    padding:3px 5px 3px 5px;
+    margin-top: 4px;
+    text-align: center;
 }
 
 .results{

@@ -343,11 +343,12 @@ function ManualUI(elem, runner) {
     this.pass_button = this.elem.querySelector("button.pass");
     this.fail_button = this.elem.querySelector("button.fail");
     this.block_button = this.elem.querySelector("button.block");
-    this.ref_buttons = this.elem.querySelector(".reftestUI");
+    this.ref_buttons_p = this.elem.querySelector("p.reftestUI");
+    this.ref_buttons_div = this.elem.querySelector("div.reftestUI");
     this.man_buttons = this.elem.querySelector(".mantestUI");
-    this.ref_type = this.ref_buttons.querySelector(".refType");
-    this.test_button = this.ref_buttons.querySelector("button.test");
-    this.ref_button = this.ref_buttons.querySelector("button.ref");
+    this.ref_type = this.ref_buttons_p.querySelector(".refType");
+    this.test_button = this.ref_buttons_div.querySelector("button.test");
+    this.ref_button = this.ref_buttons_div.querySelector("button.ref");
 
     this.hide();
 
@@ -397,7 +398,8 @@ ManualUI.prototype = {
     },
 
     show_ref: function() {
-        this.ref_buttons.style.display = "block";
+        this.ref_buttons_p.style.display = "block";
+        this.ref_buttons_div.style.display = "block";
         this.man_buttons.style.display = "none";
         this.test_button.onclick = function() {
             this.runner.load(this.runner.current_test.url);
@@ -408,7 +410,8 @@ ManualUI.prototype = {
     },
 
     hide_ref: function() {
-        this.ref_buttons.style.display = "none";
+        this.ref_buttons_p.style.display = "none";
+        this.ref_buttons_div.style.display = "none";
         this.man_buttons.style.display = "block";
     },
 
@@ -425,9 +428,7 @@ ManualUI.prototype = {
     },
 
     on_test_start: function(test) {
-        document.getElementById("help").style.display = "none";
         document.getElementById("test_select_div").style.display = "none";
-        document.getElementById("show_info").style.display = "none";
         if (test.type == "manual" || test.type == "reftest") {
             document.getElementById("start_btn_div").classList.add("start_btn_div_manual");
             this.show();
@@ -548,21 +549,16 @@ SuiteUI.prototype ={
             }
         }
         this.packages_list.innerHTML = html;
-        
         var first_categry = this.pelem.querySelector("input#"+item); 
-        
         first_categry.parentNode.parentNode.childNodes[1].style.display = "block";
-        
-        this.select_all_label.childNodes[2].data = " Select All ["+first_categry_num+"/"+total_num+"]";
+        this.select_all_label.childNodes[3].innerHTML = first_categry_num+" / "+total_num;
         
     },
 
     refresh_select_list_all: function(){
         var status = this.select_all.checked;
-        var select_all_str = this.select_all_label.childNodes[2].data;
-        var arr1 = select_all_str.split("[");
-        var arr2 = arr1[1].split("/");
-        var arr3 = arr2[1].split("]");
+        var select_all_str = this.select_all_label.childNodes[3].innerHTML;
+        var arr1 = select_all_str.split(" / ");
         if(status == true){
             this.select_all_label.classList.remove("unselect_all_label");
             this.select_all_label.classList.add("select_all_label");
@@ -571,7 +567,7 @@ SuiteUI.prototype ={
             this.spec_list.forEach(function (dom) {
                 dom.parentNode.classList.add("spec_list_check");
             });
-            this.select_all_label.childNodes[2].data = arr1[0] + "[" + arr3[0] + "/" + arr3[0] + "]";
+            this.select_all_label.childNodes[3].innerHTML = arr1[1] + " / " + arr1[1];
             this.category_list.forEach(function (dom) {
                 var category_str = dom.parentNode.childNodes[2].innerHTML;
                 var arr1 = category_str.split(" / ");
@@ -585,7 +581,7 @@ SuiteUI.prototype ={
             this.spec_list.forEach(function (dom) {
                 dom.parentNode.classList.remove("spec_list_check");
             });
-            this.select_all_label.childNodes[2].data = arr1[0] + "[0/" + arr3[0] + "]";
+            this.select_all_label.childNodes[3].innerHTML = "0 / " + arr1[1];
             this.category_list.forEach(function (dom) {
                 var category_str = dom.parentNode.childNodes[2].innerHTML;
                 var arr1 = category_str.split(" / ");
@@ -622,22 +618,20 @@ SuiteUI.prototype ={
         var category_str = this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML;
         var arr1 = category_str.split(" / ");
         
-        var select_all_str = document.getElementById("select_all_label").childNodes[2].data;
-        var all_arr1 = select_all_str.split("[");
-        var all_arr2 = all_arr1[1].split("/");
-        var all_arr3 = all_arr2[1].split("]");
+        var select_all_str = document.getElementById("select_all_label").childNodes[3].innerHTML;
+        var all_arr1 = select_all_str.split(" / ");
         if(this_status == true){
             this.parentNode.classList.add("spec_list_check");
             var check_num = parseInt(arr1[0]) + 1;
             this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + " / " + arr1[1];
-            var all_check_num = parseInt(all_arr2[0]) + 1;
-            document.getElementById("select_all_label").childNodes[2].data = all_arr1[0] + "[" + all_check_num + "/" + all_arr3[0] + "]";
+            var all_check_num = parseInt(all_arr1[0]) + 1;
+            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + " / " + all_arr1[1];
         }else{
             var check_num = parseInt(arr1[0]) - 1;
             this.parentNode.classList.remove("spec_list_check");
             this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + " / " + arr1[1];
-            var all_check_num = parseInt(all_arr2[0]) - 1;
-            document.getElementById("select_all_label").childNodes[2].data = all_arr1[0] + "[" + all_check_num + "/" + all_arr3[0] + "]";
+            var all_check_num = parseInt(all_arr1[0]) - 1;
+            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + " / " + all_arr1[1];
         }
         
         var status = true;
@@ -659,22 +653,20 @@ SuiteUI.prototype ={
         var category_str = this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML;
         var arr1 = category_str.split(" / ");
         
-        var select_all_str = document.getElementById("select_all_label").childNodes[2].data;
-        var all_arr1 = select_all_str.split("[");
-        var all_arr2 = all_arr1[1].split("/");
-        var all_arr3 = all_arr2[1].split("]");
+        var select_all_str = document.getElementById("select_all_label").childNodes[3].innerHTML;
+        var all_arr1 = select_all_str.split(" / ");
         if(this_status == true){
             this.childNodes[0].classList.add("spec_list_check");
             var check_num = parseInt(arr1[0]) + 1;
             this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + " / " + arr1[1];
-            var all_check_num = parseInt(all_arr2[0]) + 1;
-            document.getElementById("select_all_label").childNodes[2].data = all_arr1[0] + "[" + all_check_num + "/" + all_arr3[0] + "]";
+            var all_check_num = parseInt(all_arr1[0]) + 1;
+            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + " / " + all_arr1[1];
         }else{
             var check_num = parseInt(arr1[0]) - 1;
             this.childNodes[0].classList.remove("spec_list_check");
             this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + " / " + arr1[1];
-            var all_check_num = parseInt(all_arr2[0]) - 1;
-            document.getElementById("select_all_label").childNodes[2].data = all_arr1[0] + "[" + all_check_num + "/" + all_arr3[0] + "]";
+            var all_check_num = parseInt(all_arr1[0]) - 1;
+            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + " / " + all_arr1[1];
         }
         
         var status = true;
@@ -705,10 +697,8 @@ SuiteUI.prototype ={
         var arr1 = category_str.split(" / ");
         var arr_li = Array.prototype.slice.call(this.parentNode.parentNode.querySelectorAll("li.specname"));
         
-        var select_all_str = document.getElementById("select_all_label").childNodes[2].data;
-        var all_arr1 = select_all_str.split("[");
-        var all_arr2 = all_arr1[1].split("/");
-        var all_arr3 = all_arr2[1].split("]");
+        var select_all_str = document.getElementById("select_all_label").childNodes[3].innerHTML;
+        var all_arr1 = select_all_str.split(" / ");
         
         if (arr1[0] != arr1[1]){
             this.innerHTML = arr1[1] + " / " + arr1[1];
@@ -716,16 +706,16 @@ SuiteUI.prototype ={
                 dom.childNodes[0].childNodes[0].checked = true;
                 dom.childNodes[0].classList.add("spec_list_check");
             });
-            var all_check_num = parseInt(all_arr2[0]) + parseInt(arr1[1]) - parseInt(arr1[0]);
-            document.getElementById("select_all_label").childNodes[2].data = all_arr1[0] + "[" + all_check_num + "/" + all_arr3[0] + "]";
+            var all_check_num = parseInt(all_arr1[0]) + parseInt(arr1[1]) - parseInt(arr1[0]);
+            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + " / " + all_arr1[1];
         }else{
             this.innerHTML = "0 / " + arr1[1];
             arr_li.forEach(function(dom){
                 dom.childNodes[0].childNodes[0].checked = false;
                 dom.childNodes[0].classList.remove("spec_list_check");
             });
-            var all_check_num = parseInt(all_arr2[0]) - parseInt(arr1[1]);
-            document.getElementById("select_all_label").childNodes[2].data = all_arr1[0] + "[" + all_check_num + "/" + all_arr3[0] + "]";
+            var all_check_num = parseInt(all_arr1[0]) - parseInt(arr1[1]);
+            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + " / " + all_arr1[1];
         }
         if(this.parentNode.parentNode.childNodes[1].style.display == "block"){
             this.parentNode.parentNode.childNodes[1].style.display = "none";
@@ -869,9 +859,7 @@ TestControl.prototype = {
             this.filter_selected.disabled = false;
             this.filter_input.disabled = false;
             this.pause_button.classList.add("button_hidden");
-            document.getElementById("help").style.display = "none";
             document.getElementById("test_select_div").style.display = "block";
-            document.getElementById("show_info").style.display = "block";
             document.getElementById("start_btn_div").classList.remove("start_btn_div_manual");
             document.getElementById("start_btn_div").classList.remove("start_btn_div_reftest");
             if(this.input_test_result.querySelector("ul").childNodes.length > 0){
@@ -1003,9 +991,7 @@ TestControl.prototype = {
         this.set_pause();
         this.set_start();
         this.pause_button.classList.add("button_hidden");
-        document.getElementById("help").style.display = "none";
         document.getElementById("test_select_div").style.display = "block";
-        document.getElementById("show_info").style.display = "block";
         document.getElementById("start_btn_div").classList.remove("start_btn_div_manual");
         document.getElementById("start_btn_div").classList.remove("start_btn_div_reftest");
         if(this.input_test_result.querySelector("ul").childNodes.length > 0){
@@ -1422,17 +1408,7 @@ function setup() {
         document.getElementById('input_tests').value = options.path;
     }
 
-    var help_btn = document.getElementById("show_info");
-    var run_info = document.getElementById("help");
     var version_dom = document.getElementById('version');
-    run_info.style.display = "none";
-    help_btn.addEventListener('click',function(){
-        if(run_info.style.display == "none"){
-            run_info.style.display = "block";
-        }else{
-            run_info.style.display = "none";
-        }
-    } , false);
 
     loadconfig("/tests/version.json",version_dom);
     runner = new Runner("/tests/MANIFEST.json", options);
