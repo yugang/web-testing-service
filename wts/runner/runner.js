@@ -37,22 +37,32 @@ Manifest.prototype = {
     }
 };
 
-function ManifestIterator(manifest, filter_array, test_types) {
+function ManifestIterator(manifest, filter_array, test_types, select_json) {
     this.manifest = manifest;
     this.filter_array = filter_array
     this.test_types = test_types;
     this.test_index = 0;
+    this.select_json_data = new Array();
+    this.select_json(select_json);
     this.filter_tests = new Array();
     this.filter_cases();
 }
-var gsuite_name = null;
-var gspec_desc = null;
 var type_arr = new Array();
 type_arr["testharness"] = "auto";
 type_arr["reftest"] = "reference";
 type_arr["manual"] = "manual";
 
 ManifestIterator.prototype = {
+    select_json: function(select_json){
+        var suite_data = select_json.data;
+        for(var k in suite_data){
+            var data_item = suite_data[k];                
+            for (var i in data_item){
+                this.select_json_data[i] = data_item[i].spec_desc;
+            }
+        }
+    },
+
     filter_cases: function(){
         var mfitor = this;
         this.test_types.forEach(function(test_type){
@@ -93,32 +103,13 @@ ManifestIterator.prototype = {
     },
 
     to_test: function(manifest_item,test_type) {
-        var suite_name = manifest_item.url.split("/")[2]
-        if (!gsuite_name || gsuite_name !== suite_name) {
-          gsuite_name = suite_name;
-          var xhr = new XMLHttpRequest();
-          xhr.onreadystatechange = function(manifest_item,test_type) {
-              if (xhr.readyState !== 4) {
-                  return;
-              }
-              if (!(xhr.status === 200 || xhr.status === 0)) {
-                  throw new Error("spec file " + path + " failed to load");
-              }
-              gspec_desc = xhr.responseText.split('spec_desc')[1].split('\n')[0].split(':')[1].split('"')[1]
-              };
-
-          var spec_file = "/tests/" + gsuite_name + "/spec.json"
-          xhr.open("GET", spec_file, false);
-          xhr.send(null);
-        }
-
+        var suite_name = manifest_item.url.split("/")[2];
         var test = {
             type: test_type,
             url: manifest_item.url,
-            spec_desc: gspec_desc
+            spec_desc: this.select_json_data[suite_name]
         };
         if (manifest_item.hasOwnProperty("ref_url")) {
-            test.ref_type = manifest_item.ref_type;
             test.ref_url = manifest_item.ref_url;
         }
         return test;
@@ -318,7 +309,6 @@ VisualOutput.prototype = {
         } else {
             var wrapper = document.createElement("span");
             wrapper.appendChild(this.link(test.url));
-            wrapper.appendChild(document.createTextNode(" " + test.ref_type + " "));
             wrapper.appendChild(this.link(test.ref_url));
             return wrapper;
         }
@@ -347,10 +337,7 @@ function ManualUI(elem, runner) {
     this.pass_button = this.elem.querySelector("button.pass");
     this.fail_button = this.elem.querySelector("button.fail");
     this.block_button = this.elem.querySelector("button.block");
-    this.ref_buttons_p = this.elem.querySelector("p.reftestUI");
     this.ref_buttons_div = this.elem.querySelector("div.reftestUI");
-    this.man_buttons = this.elem.querySelector(".mantestUI");
-    this.ref_type = this.ref_buttons_p.querySelector(".refType");
     this.test_button = this.ref_buttons_div.querySelector("button.test");
     this.ref_button = this.ref_buttons_div.querySelector("button.ref");
 
@@ -402,9 +389,7 @@ ManualUI.prototype = {
     },
 
     show_ref: function() {
-        this.ref_buttons_p.style.display = "block";
         this.ref_buttons_div.style.display = "block";
-        this.man_buttons.style.display = "none";
         this.test_button.onclick = function() {
             this.runner.load(this.runner.current_test.url);
         }.bind(this);
@@ -414,9 +399,7 @@ ManualUI.prototype = {
     },
 
     hide_ref: function() {
-        this.ref_buttons_p.style.display = "none";
         this.ref_buttons_div.style.display = "none";
-        this.man_buttons.style.display = "block";
     },
 
     disable_buttons: function() {
@@ -443,7 +426,6 @@ ManualUI.prototype = {
             document.getElementById("start_btn_div").classList.remove("start_btn_div_manual");
             document.getElementById("start_btn_div").classList.add("start_btn_div_reftest");
             this.show_ref();
-            this.ref_type.textContent = test.ref_type === "==" ? "equal" : "unequal";
         } else {
             this.hide_ref();
         }
@@ -486,7 +468,7 @@ function SuiteUI(elem, runner){
     this.spec_list_li = Array.prototype.slice.call(this.packages_list.querySelectorAll("li.specname"));
     this.category_list = Array.prototype.slice.call(this.packages_list.querySelectorAll(".accordion-heading>input"));
     this.head_list = Array.prototype.slice.call(this.packages_list.querySelectorAll(".accordion-heading"));
-    this.categry_num = Array.prototype.slice.call(this.packages_list.querySelectorAll("label.categry_num"));
+    this.categry_num = Array.prototype.slice.call(this.packages_list.querySelectorAll("div.categry_num"));
 
     this.select_all.onclick = function(){
         this.refresh_select_list_all()
@@ -520,76 +502,59 @@ function SuiteUI(elem, runner){
 SuiteUI.prototype ={
     render_suite_list: function(suite_data){
         var html = ''
-        var item = "first_categry";
         var total_num = 0;
+        var index_num = 0;
         for(var k in suite_data){
-            if(item == "first_categry"){
-                var first_categry_num = 0;
-                var tab_html = '';
-                tab_html +='<div class="accordion-body collapse" style="display:none;"><div class="accordion-inner" id="'+k+'">';
-                var data_item = suite_data[k];                
-                for (var i in data_item){
-                    tab_html += '<li class="specname"><label class="spec_list spec_list_check" for="'+i+'"><input type="checkbox" id="'+i+'" checked> '+data_item[i].spec_desc+'</label><a href="'+data_item[i].spec_url+'"> <span class="glyphicon glyphicon-home"></span></a></li>'
-                    total_num++;
-                    first_categry_num++;
-                }
-                tab_html +='</div ></div ></div >';
-                tab_html = '<div class="accordion-group"><div class="accordion-heading"><input type="checkbox" id="'+k+'" checked><label class="category_label"> '+k+'</label><label class="categry_num">'+first_categry_num+' / '+first_categry_num+'</label></div>' + tab_html;
-                html += tab_html;
-                item = k;
-            }else{
-                var categry_num = 0;
-                var tab_html = '';
-                tab_html +='<div class="accordion-body collapse" style="display:none;"><div class="accordion-inner" id="'+k+'">';
-                var data_item = suite_data[k];                
-                for (var i in data_item){
-                    tab_html += '<li class="specname"><label class="spec_list" for="'+i+'"><input type="checkbox" id="'+i+'"> '+data_item[i].spec_desc+'</label><a href="'+data_item[i].spec_url+'"> <span class="glyphicon glyphicon-home"></span></a></li>'
-                    total_num++;
-                    categry_num++;
-                }
-                tab_html +='</div ></div ></div >';
-                tab_html = '<div class="accordion-group"><div class="accordion-heading"><input type="checkbox" id="'+k+'" checked><label class="category_label"> '+k+'</label><label class="categry_num">0 / '+categry_num+'</label></div>' + tab_html;
-                html += tab_html;
+            var categry_num = 0;
+            var tab_html = '';
+            tab_html +='<div class="accordion-body collapse display_none"><div class="accordion-inner" id="index_'+index_num+'">';
+            var data_item = suite_data[k];                
+            for (var i in data_item){
+                tab_html += '<li class="specname"><label class="spec_list" for="'+i+'"><input type="checkbox" id="'+i+'"> '+data_item[i].spec_desc+'</label><a href="'+data_item[i].spec_url+'" target="_blank"> <span class="glyphicon glyphicon-home"></span></a></li>'
+                total_num++;
+                categry_num++;
             }
+            tab_html +='</div ></div ></div >';
+            tab_html = '<div class="accordion-group"><div class="accordion-heading"><input type="checkbox" id="index_'+index_num+'" checked><label class="category_label"> '+k+'</label><div class="categry_num">0/'+categry_num+'</div></div>' + tab_html;
+            html += tab_html;
+            index_num++;
         }
         this.packages_list.innerHTML = html;
-        var first_categry = this.pelem.querySelector("input#"+item); 
-        first_categry.parentNode.parentNode.childNodes[1].style.display = "block";
-        this.select_all_label.childNodes[3].innerHTML = first_categry_num+" / "+total_num;
-        
+        this.packages_list.childNodes[0].childNodes[1].style.display = "block";
+        this.select_all_label.childNodes[3].innerHTML = "0/"+total_num;
     },
 
     refresh_select_list_all: function(){
         var status = this.select_all.checked;
         var select_all_str = this.select_all_label.childNodes[3].innerHTML;
-        var arr1 = select_all_str.split(" / ");
+        var arr1 = select_all_str.split("/");
         if(status == true){
             this.select_all_label.classList.remove("unselect_all_label");
             this.select_all_label.classList.add("select_all_label");
-            this.select_all_span.classList.remove("glyphicon-remove");
-            this.select_all_span.classList.add("glyphicon-ok");
+            this.select_all_span.classList.remove("glyphicon-star-empty");
+            this.select_all_span.classList.add("glyphicon-star");
             this.spec_list.forEach(function (dom) {
                 dom.parentNode.classList.add("spec_list_check");
             });
-            this.select_all_label.childNodes[3].innerHTML = arr1[1] + " / " + arr1[1];
+            this.select_all_label.childNodes[3].innerHTML = arr1[1] + "/" + arr1[1];
             this.category_list.forEach(function (dom) {
                 var category_str = dom.parentNode.childNodes[2].innerHTML;
-                var arr1 = category_str.split(" / ");
-                dom.parentNode.childNodes[2].innerHTML = arr1[1] + " / " + arr1[1];
+                var arr1 = category_str.split("/");
+                dom.parentNode.childNodes[2].innerHTML = arr1[1] + "/" + arr1[1];
             });
         }else{
             this.select_all_label.classList.remove("select_all_label");
             this.select_all_label.classList.add("unselect_all_label");
-            this.select_all_span.classList.remove("glyphicon-ok");
-            this.select_all_span.classList.add("glyphicon-remove");
+            this.select_all_span.classList.remove("glyphicon-star");
+            this.select_all_span.classList.add("glyphicon-star-empty");
             this.spec_list.forEach(function (dom) {
                 dom.parentNode.classList.remove("spec_list_check");
             });
-            this.select_all_label.childNodes[3].innerHTML = "0 / " + arr1[1];
+            this.select_all_label.childNodes[3].innerHTML = "0/" + arr1[1];
             this.category_list.forEach(function (dom) {
                 var category_str = dom.parentNode.childNodes[2].innerHTML;
-                var arr1 = category_str.split(" / ");
-                dom.parentNode.childNodes[2].innerHTML = "0 / " + arr1[1];
+                var arr1 = category_str.split("/");
+                dom.parentNode.childNodes[2].innerHTML = "0/" + arr1[1];
             });
         }
         this.spec_list.forEach(function (dom) {
@@ -620,22 +585,22 @@ SuiteUI.prototype ={
     refresh_categry_input_and_test_number: function(){
         var this_status = this.checked;
         var category_str = this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML;
-        var arr1 = category_str.split(" / ");
+        var arr1 = category_str.split("/");
         
         var select_all_str = document.getElementById("select_all_label").childNodes[3].innerHTML;
-        var all_arr1 = select_all_str.split(" / ");
+        var all_arr1 = select_all_str.split("/");
         if(this_status == true){
             this.parentNode.classList.add("spec_list_check");
             var check_num = parseInt(arr1[0]) + 1;
-            this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + " / " + arr1[1];
+            this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + "/" + arr1[1];
             var all_check_num = parseInt(all_arr1[0]) + 1;
-            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + " / " + all_arr1[1];
+            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + "/" + all_arr1[1];
         }else{
             var check_num = parseInt(arr1[0]) - 1;
             this.parentNode.classList.remove("spec_list_check");
-            this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + " / " + arr1[1];
+            this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + "/" + arr1[1];
             var all_check_num = parseInt(all_arr1[0]) - 1;
-            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + " / " + all_arr1[1];
+            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + "/" + all_arr1[1];
         }
         
         var status = true;
@@ -655,22 +620,22 @@ SuiteUI.prototype ={
         }
         var this_status = this.childNodes[0].childNodes[0].checked;
         var category_str = this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML;
-        var arr1 = category_str.split(" / ");
+        var arr1 = category_str.split("/");
         
         var select_all_str = document.getElementById("select_all_label").childNodes[3].innerHTML;
-        var all_arr1 = select_all_str.split(" / ");
+        var all_arr1 = select_all_str.split("/");
         if(this_status == true){
             this.childNodes[0].classList.add("spec_list_check");
             var check_num = parseInt(arr1[0]) + 1;
-            this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + " / " + arr1[1];
+            this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + "/" + arr1[1];
             var all_check_num = parseInt(all_arr1[0]) + 1;
-            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + " / " + all_arr1[1];
+            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + "/" + all_arr1[1];
         }else{
             var check_num = parseInt(arr1[0]) - 1;
             this.childNodes[0].classList.remove("spec_list_check");
-            this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + " / " + arr1[1];
+            this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + "/" + arr1[1];
             var all_check_num = parseInt(all_arr1[0]) - 1;
-            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + " / " + all_arr1[1];
+            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + "/" + all_arr1[1];
         }
         
         var status = true;
@@ -698,28 +663,28 @@ SuiteUI.prototype ={
     
     refresh_categry_select: function(){
         var category_str = this.innerHTML;
-        var arr1 = category_str.split(" / ");
+        var arr1 = category_str.split("/");
         var arr_li = Array.prototype.slice.call(this.parentNode.parentNode.querySelectorAll("li.specname"));
         
         var select_all_str = document.getElementById("select_all_label").childNodes[3].innerHTML;
-        var all_arr1 = select_all_str.split(" / ");
+        var all_arr1 = select_all_str.split("/");
         
         if (arr1[0] != arr1[1]){
-            this.innerHTML = arr1[1] + " / " + arr1[1];
+            this.innerHTML = arr1[1] + "/" + arr1[1];
             arr_li.forEach(function(dom){
                 dom.childNodes[0].childNodes[0].checked = true;
                 dom.childNodes[0].classList.add("spec_list_check");
             });
             var all_check_num = parseInt(all_arr1[0]) + parseInt(arr1[1]) - parseInt(arr1[0]);
-            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + " / " + all_arr1[1];
+            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + "/" + all_arr1[1];
         }else{
-            this.innerHTML = "0 / " + arr1[1];
+            this.innerHTML = "0/" + arr1[1];
             arr_li.forEach(function(dom){
                 dom.childNodes[0].childNodes[0].checked = false;
                 dom.childNodes[0].classList.remove("spec_list_check");
             });
             var all_check_num = parseInt(all_arr1[0]) - parseInt(arr1[1]);
-            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + " / " + all_arr1[1];
+            document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + "/" + all_arr1[1];
         }
         if(this.parentNode.parentNode.childNodes[1].style.display == "block"){
             this.parentNode.parentNode.childNodes[1].style.display = "none";
@@ -1026,14 +991,14 @@ TestControl.prototype = {
     change_ckb_by_li: function(){
         if(this.querySelector("input").checked == true){
             this.querySelector("input").checked = false;
-            this.querySelector("span").classList.remove("glyphicon-ok");
-            this.querySelector("span").classList.add("glyphicon-remove");
+            this.querySelector("span").classList.remove("glyphicon-star");
+            this.querySelector("span").classList.add("glyphicon-star-empty");
             this.classList.remove("test_type_check");
             this.classList.add("test_type_uncheck");
         }else{
             this.querySelector("input").checked = true;
-            this.querySelector("span").classList.remove("glyphicon-remove");
-            this.querySelector("span").classList.add("glyphicon-ok");
+            this.querySelector("span").classList.remove("glyphicon-star-empty");
+            this.querySelector("span").classList.add("glyphicon-star");
             this.classList.remove("test_type_uncheck");
             this.classList.add("test_type_check");
         }
@@ -1042,14 +1007,14 @@ TestControl.prototype = {
     change_dumpit_li: function(dom){
         if(dom.querySelector("input").checked == true){
             dom.querySelector("input").checked = false;
-            dom.querySelector("span").classList.add("glyphicon-remove");
-            dom.querySelector("span").classList.remove("glyphicon-ok");
+            dom.querySelector("span").classList.add("glyphicon-star-empty");
+            dom.querySelector("span").classList.remove("glyphicon-star");
             dom.classList.remove("advanced_ckb_checked");
             dom.classList.add("advanced_ckb_unchecked");
         }else{
             dom.querySelector("input").checked = true;
-            dom.querySelector("span").classList.add("glyphicon-ok");
-            dom.querySelector("span").classList.remove("glyphicon-remove");
+            dom.querySelector("span").classList.add("glyphicon-star");
+            dom.querySelector("span").classList.remove("glyphicon-star-empty");
             dom.classList.remove("advanced_ckb_unchecked");
             dom.classList.add("advanced_ckb_checked");
         }
@@ -1058,14 +1023,14 @@ TestControl.prototype = {
     change_iframe_li: function(dom){
         if(dom.querySelector("input").checked == true){
             dom.querySelector("input").checked = false;
-            dom.querySelector("span").classList.add("glyphicon-remove");
-            dom.querySelector("span").classList.remove("glyphicon-ok");
+            dom.querySelector("span").classList.add("glyphicon-star-empty");
+            dom.querySelector("span").classList.remove("glyphicon-star");
             dom.classList.remove("advanced_ckb_checked");
             dom.classList.add("advanced_ckb_unchecked");
         }else{
             dom.querySelector("input").checked = true;
-            dom.querySelector("span").classList.add("glyphicon-ok");
-            dom.querySelector("span").classList.remove("glyphicon-remove");
+            dom.querySelector("span").classList.add("glyphicon-star");
+            dom.querySelector("span").classList.remove("glyphicon-star-empty");
             dom.classList.remove("advanced_ckb_unchecked");
             dom.classList.add("advanced_ckb_checked");
         }
@@ -1076,16 +1041,18 @@ TestControl.prototype = {
         var item = input_value.split('*');
         input_value = item[0];
         var list_arr = new Array();
+		var list_arr_lower = new Array();
         var li_list = Array.prototype.slice.call(this.input_test_result.querySelectorAll("li"));
         li_list.forEach(function (dom) {
             list_arr.push(dom.childNodes[0].data);
+			list_arr_lower.push(dom.childNodes[0].data.toLocaleLowerCase());
         });
         var tmp = 1;
         for(var k in suite_data){
             if(k.toLocaleLowerCase() == input_value){
                 var data_item = suite_data[k];
                 for (var i in data_item){
-                    if(list_arr.indexOf(data_item[i].spec_desc) == -1){
+                    if(list_arr_lower.indexOf(data_item[i].spec_desc.toLocaleLowerCase()) == -1){
                         list_arr.push(data_item[i].spec_desc);
                         tmp = 2;
                     }                        
@@ -1094,12 +1061,12 @@ TestControl.prototype = {
                 var data_item = suite_data[k];
                 for (var i in data_item){
                     if(i.toLocaleLowerCase() == input_value){
-                        if(list_arr.indexOf(data_item[i].spec_desc) == -1){
+                        if(list_arr_lower.indexOf(data_item[i].spec_desc.toLocaleLowerCase()) == -1){
                             list_arr.push(data_item[i].spec_desc);
                             tmp = 2;
                         }
                     }else if(data_item[i].spec_desc.toLocaleLowerCase() == input_value){
-                        if(list_arr.indexOf(data_item[i].spec_desc) == -1){
+                        if(list_arr_lower.indexOf(data_item[i].spec_desc.toLocaleLowerCase()) == -1){
                             list_arr.push(data_item[i].spec_desc);
                             tmp = 2;
                         }
@@ -1173,7 +1140,7 @@ Results.prototype = {
         var data = {
             "results": this.test_results.map(function(result) {
                 var rv = {"test":(result.test.hasOwnProperty("ref_url") ?
-                                  [result.test.url, result.test.ref_type, result.test.ref_url] :
+                                  [result.test.url, result.test.ref_url] :
                                   result.test.url),
                           "type": type_arr[result.test.type],
                           "spec_desc": result.test.spec_desc,
@@ -1250,7 +1217,7 @@ Runner.prototype = {
         window.testharness_properties = testharness_settings;
         this.run_mode = run_mode;
 
-        this.manifest_iterator = new ManifestIterator(this.manifest, this.filter_array, this.test_types);
+        this.manifest_iterator = new ManifestIterator(this.manifest, this.filter_array, this.test_types, this.select_json);
         this.num_tests = null;
 
         if (this.manifest.data === null) {
