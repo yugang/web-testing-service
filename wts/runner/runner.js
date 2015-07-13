@@ -165,6 +165,8 @@ VisualOutput.prototype = {
             }
         }
         this.elem.querySelector(".jsonResults").style.display = "none";
+        this.show_details_button.classList.remove("width_49_75");
+        this.show_details_button.classList.add("width_100");
         this.meter.style.width = '0px';
         this.meter.textContent = '0%';
         this.results_table.removeChild(this.results_table.tBodies[0]);
@@ -301,6 +303,8 @@ VisualOutput.prototype = {
         a.textContent = "Download JSON Results";
         if (!a.getAttribute("download")) a.textContent += " (right-click and save as to download)";
         a.style.display = "inline";
+        this.show_details_button.classList.remove("width_100");
+        this.show_details_button.classList.add("width_49_75");
     },
 
     test_name_node: function(test) {
@@ -340,6 +344,7 @@ function ManualUI(elem, runner) {
     this.ref_buttons_div = this.elem.querySelector("div.reftestUI");
     this.test_button = this.ref_buttons_div.querySelector("button.test");
     this.ref_button = this.ref_buttons_div.querySelector("button.ref");
+    this.result_button_div = this.elem.querySelector("div.result_button");
 
     this.hide();
 
@@ -390,6 +395,9 @@ ManualUI.prototype = {
 
     show_ref: function() {
         this.ref_buttons_div.style.display = "block";
+        this.result_button_div.classList.remove("width_100");
+        this.result_button_div.classList.add("width_49_75");
+        this.result_button_div.classList.add("margin_left_0_5");
         this.test_button.onclick = function() {
             this.runner.load(this.runner.current_test.url);
         }.bind(this);
@@ -400,6 +408,9 @@ ManualUI.prototype = {
 
     hide_ref: function() {
         this.ref_buttons_div.style.display = "none";
+        this.result_button_div.classList.remove("width_49_75");
+        this.result_button_div.classList.remove("margin_left_0_5");
+        this.result_button_div.classList.add("width_100");
     },
 
     disable_buttons: function() {
@@ -515,7 +526,7 @@ SuiteUI.prototype ={
                 categry_num++;
             }
             tab_html +='</div ></div ></div >';
-            tab_html = '<div class="accordion-group"><div class="accordion-heading"><input type="checkbox" id="index_'+index_num+'" checked><label class="category_label"> '+k+'</label><div class="categry_num">0/'+categry_num+'</div></div>' + tab_html;
+            tab_html = '<div class="accordion-group"><div class="accordion-heading"><input type="checkbox" id="index_'+index_num+'" checked><label class="category_label"> '+k+'</label><div class="categry_num ctg_num_uncheck">0/'+categry_num+'</div></div>' + tab_html;
             html += tab_html;
             index_num++;
         }
@@ -541,6 +552,8 @@ SuiteUI.prototype ={
                 var category_str = dom.parentNode.childNodes[2].innerHTML;
                 var arr1 = category_str.split("/");
                 dom.parentNode.childNodes[2].innerHTML = arr1[1] + "/" + arr1[1];
+                dom.parentNode.childNodes[2].classList.remove("ctg_num_uncheck");
+                dom.parentNode.childNodes[2].classList.add("ctg_num_check");
             });
         }else{
             this.select_all_label.classList.remove("select_all_label");
@@ -555,6 +568,8 @@ SuiteUI.prototype ={
                 var category_str = dom.parentNode.childNodes[2].innerHTML;
                 var arr1 = category_str.split("/");
                 dom.parentNode.childNodes[2].innerHTML = "0/" + arr1[1];
+                dom.parentNode.childNodes[2].classList.remove("ctg_num_check");
+                dom.parentNode.childNodes[2].classList.add("ctg_num_uncheck");
             });
         }
         this.spec_list.forEach(function (dom) {
@@ -589,18 +604,27 @@ SuiteUI.prototype ={
         
         var select_all_str = document.getElementById("select_all_label").childNodes[3].innerHTML;
         var all_arr1 = select_all_str.split("/");
+        var check_num = 0;
         if(this_status == true){
             this.parentNode.classList.add("spec_list_check");
-            var check_num = parseInt(arr1[0]) + 1;
+            check_num = parseInt(arr1[0]) + 1;
             this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + "/" + arr1[1];
             var all_check_num = parseInt(all_arr1[0]) + 1;
             document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + "/" + all_arr1[1];
         }else{
-            var check_num = parseInt(arr1[0]) - 1;
+            check_num = parseInt(arr1[0]) - 1;
             this.parentNode.classList.remove("spec_list_check");
             this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + "/" + arr1[1];
             var all_check_num = parseInt(all_arr1[0]) - 1;
             document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + "/" + all_arr1[1];
+        }
+        
+        if(check_num == 0){
+            this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].classList.remove("ctg_num_check");
+            this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].classList.add("ctg_num_uncheck");
+        }else{
+            this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].classList.remove("ctg_num_uncheck");
+            this.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].classList.add("ctg_num_check");
         }
         
         var status = true;
@@ -624,20 +648,29 @@ SuiteUI.prototype ={
         
         var select_all_str = document.getElementById("select_all_label").childNodes[3].innerHTML;
         var all_arr1 = select_all_str.split("/");
+        
+        var check_num = 0;
         if(this_status == true){
             this.childNodes[0].classList.add("spec_list_check");
-            var check_num = parseInt(arr1[0]) + 1;
+            check_num = parseInt(arr1[0]) + 1;
             this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + "/" + arr1[1];
             var all_check_num = parseInt(all_arr1[0]) + 1;
             document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + "/" + all_arr1[1];
         }else{
-            var check_num = parseInt(arr1[0]) - 1;
+            check_num = parseInt(arr1[0]) - 1;
             this.childNodes[0].classList.remove("spec_list_check");
             this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].innerHTML = check_num + "/" + arr1[1];
             var all_check_num = parseInt(all_arr1[0]) - 1;
             document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + "/" + all_arr1[1];
         }
         
+        if(check_num == 0){
+            this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].classList.remove("ctg_num_check");
+            this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].classList.add("ctg_num_uncheck");
+        }else{
+            this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].classList.remove("ctg_num_uncheck");
+            this.parentNode.parentNode.parentNode.childNodes[0].childNodes[2].classList.add("ctg_num_check");
+        }
         var status = true;
         var spec_parent_id = this.parentNode.id;
         Array.prototype.slice.call(this.parentNode.querySelectorAll("li>label>input")).forEach(function(dom){
@@ -671,6 +704,8 @@ SuiteUI.prototype ={
         
         if (arr1[0] != arr1[1]){
             this.innerHTML = arr1[1] + "/" + arr1[1];
+            this.classList.remove("ctg_num_uncheck");
+            this.classList.add("ctg_num_check");
             arr_li.forEach(function(dom){
                 dom.childNodes[0].childNodes[0].checked = true;
                 dom.childNodes[0].classList.add("spec_list_check");
@@ -679,6 +714,8 @@ SuiteUI.prototype ={
             document.getElementById("select_all_label").childNodes[3].innerHTML = all_check_num + "/" + all_arr1[1];
         }else{
             this.innerHTML = "0/" + arr1[1];
+            this.classList.remove("ctg_num_check");
+            this.classList.add("ctg_num_uncheck");
             arr_li.forEach(function(dom){
                 dom.childNodes[0].childNodes[0].checked = false;
                 dom.childNodes[0].classList.remove("spec_list_check");
@@ -784,8 +821,9 @@ TestControl.prototype = {
         this.timeout_input.disabled = false;
         this.filter_selected.disabled = false;
         this.filter_input.disabled = false;
-        this.input_test_pp.style.display = "none";
-        this.input_test_result.style.display = "none";
+        this.input_test_pp.classList.remove("input_test_pp_border");
+        this.input_test_pp.classList.add("input_test_pp_no_border");
+        
         this.start_error.style.display = "none";
         this.type_checkboxes.forEach(function(elem) {
             elem.disabled = false;
@@ -795,6 +833,8 @@ TestControl.prototype = {
             var test_types = this.get_test_types();
             var settings = this.get_testharness_settings();
             this.pause_button.classList.remove("button_hidden");
+            this.start_button.classList.remove("width_100");
+            this.start_button.classList.add("width_49_75");
             var run_mode = "window";
             if (this.iframe_checkbox.checked) {
                 run_mode = "iframe";
@@ -828,14 +868,11 @@ TestControl.prototype = {
             this.filter_selected.disabled = false;
             this.filter_input.disabled = false;
             this.pause_button.classList.add("button_hidden");
+            this.start_button.classList.remove("width_49_75");
+            this.start_button.classList.add("width_100");
             document.getElementById("test_select_div").style.display = "block";
             document.getElementById("start_btn_div").classList.remove("start_btn_div_manual");
             document.getElementById("start_btn_div").classList.remove("start_btn_div_reftest");
-            if(this.input_test_result.querySelector("ul").childNodes.length > 0){
-                this.input_test_result.style.display = "block";
-            }else{
-                this.input_test_result.style.display = "none";
-            }
             this.runner.done();
         }.bind(this);
     },
@@ -912,6 +949,8 @@ TestControl.prototype = {
         var input_value = this.filter_input.value.toLocaleLowerCase();
         if(this.filter_input.value.length>2){
             this.input_test_pp.style.display = "block";
+            this.input_test_pp.classList.remove("input_test_pp_no_border");
+            this.input_test_pp.classList.add("input_test_pp_border");
             var arr_html = new Array();
             for(var k in suite_data){
                 if(k.toLocaleLowerCase().indexOf(input_value) == 0){
@@ -936,7 +975,8 @@ TestControl.prototype = {
                 }, false);
             }
         }else{
-            this.input_test_pp.style.display = "none";
+            this.input_test_pp.classList.remove("input_test_pp_border");
+            this.input_test_pp.classList.add("input_test_pp_no_border");
             this.input_test_pp.innerHTML = "";
         }
     },
@@ -960,14 +1000,11 @@ TestControl.prototype = {
         this.set_pause();
         this.set_start();
         this.pause_button.classList.add("button_hidden");
+        this.start_button.classList.remove("width_49_75");
+        this.start_button.classList.add("width_100");
         document.getElementById("test_select_div").style.display = "block";
         document.getElementById("start_btn_div").classList.remove("start_btn_div_manual");
         document.getElementById("start_btn_div").classList.remove("start_btn_div_reftest");
-        if(this.input_test_result.querySelector("ul").childNodes.length > 0){
-            this.input_test_result.style.display = "block";
-        }else{
-            this.input_test_result.style.display = "none";
-        }
     },
     
     select_select_tab: function(){
@@ -1085,11 +1122,6 @@ TestControl.prototype = {
             for (var i = 0, t = this.input_result_remove.length; i < t; i++) {
                 this.input_result_remove[i].addEventListener('click', this.remove_input_result, false);
             }
-        }
-        if(this.input_test_result.querySelector("ul").childNodes.length > 0){
-            this.input_test_result.style.display = "block";
-        }else{
-            this.input_test_result.style.display = "none";
         }
     },
     
@@ -1241,6 +1273,8 @@ Runner.prototype = {
             this.run_next_test();
         }else{
             document.getElementById('togglePause').classList.add("button_hidden");
+            document.getElementById('toggleStart').classList.remove("width_49_75");
+            document.getElementById('toggleStart').classList.add("width_100");
             document.getElementById('start_error').style.display = "block";
         }
     },
