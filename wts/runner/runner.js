@@ -835,6 +835,7 @@ TestControl.prototype = {
             this.pause_button.classList.remove("button_hidden");
             this.start_button.classList.remove("width_100");
             this.start_button.classList.add("width_49_75");
+            document.getElementById("show_details").innerHTML = "Show Details";
             var run_mode = "window";
             if (this.iframe_checkbox.checked) {
                 run_mode = "iframe";
@@ -1126,11 +1127,6 @@ TestControl.prototype = {
     },
     
     remove_input_result: function(){
-        if(this.parentNode.parentNode.childNodes.length > 1){
-            this.parentNode.parentNode.parentNode.style.display = "block";
-        }else{
-            this.parentNode.parentNode.parentNode.style.display = "none";
-        }
         this.parentNode.parentNode.removeChild(this.parentNode);
     }
 };
